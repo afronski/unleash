@@ -9,6 +9,7 @@ import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import CheckIcon from '@mui/icons-material/Check';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import { StatusIndicator, type StatusTone } from './DemoStatusIndicator.tsx';
 import type { FlagCitySetupStep } from './useFlagCitySetup.ts';
 
 const StyledSection = styled('section')(({ theme }) => ({
@@ -33,6 +34,49 @@ const StyledStepRow = styled('div')(({ theme }) => ({
 const StyledStepHeader = styled(Typography)(({ theme }) => ({
     fontWeight: theme.typography.fontWeightBold,
 }));
+
+const StyledPanelHeader = styled('div')(({ theme }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(2),
+    flexWrap: 'wrap',
+}));
+
+const setupStatus = (
+    projectCreated: boolean,
+    flagsCreated: boolean,
+    tokensCreated: boolean,
+): { tone: StatusTone; label: string; tooltip: string; pulsing?: boolean } => {
+    if (tokensCreated) {
+        return {
+            tone: 'success',
+            label: 'UNLEASH CONFIGURED',
+            tooltip:
+                'Project, flags, and tokens are ready — continue to "Setup demo app".',
+            pulsing: true,
+        };
+    }
+    if (flagsCreated) {
+        return {
+            tone: 'warning',
+            label: 'FLAGS CREATED',
+            tooltip: 'Create the API tokens to finish configuring Unleash.',
+        };
+    }
+    if (projectCreated) {
+        return {
+            tone: 'warning',
+            label: 'PROJECT CREATED',
+            tooltip: 'Create the feature flags next.',
+        };
+    }
+    return {
+        tone: 'neutral',
+        label: 'NOT CONFIGURED',
+        tooltip: 'Create the demo project to begin.',
+    };
+};
 
 interface ISetupButtonProps {
     label: string;
@@ -74,6 +118,7 @@ const SetupButton = ({
                 onClick={onClick}
                 disabled={done || disabled || busy}
                 data-testid={testId}
+                style={{ width: '10vw' }}
             >
                 {done ? doneLabel : label}
             </Button>
@@ -101,7 +146,13 @@ export const DemoSetupPanel = ({
     onCreateTokens,
 }: IDemoSetupPanelProps) => (
     <StyledSection data-testid='demo-setup-panel'>
-        <Typography variant='h2'>Configure Unleash</Typography>
+        <StyledPanelHeader>
+            <Typography variant='h2'>Configure Unleash</Typography>
+            <StatusIndicator
+                {...setupStatus(projectCreated, flagsCreated, tokensCreated)}
+                testId='demo-setup-indicator'
+            />
+        </StyledPanelHeader>
         <Typography variant='body2' color='text.secondary'>
             Three steps prepare this Unleash instance for the demo: a dedicated
             project, its feature flags (with strategies, variants, dependencies,
@@ -113,8 +164,8 @@ export const DemoSetupPanel = ({
                 1. Create the demo project
             </StyledStepHeader>
             <SetupButton
-                label='Create demo project'
-                doneLabel='Demo project created'
+                label='Create project'
+                doneLabel='Project created'
                 icon={<AutoFixHighIcon />}
                 done={projectCreated}
                 disabled={false}

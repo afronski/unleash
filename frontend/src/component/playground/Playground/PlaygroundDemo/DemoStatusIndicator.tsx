@@ -1,6 +1,8 @@
 import { keyframes, styled, Tooltip, Typography } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 
+export type StatusTone = 'neutral' | 'warning' | 'success' | 'error';
+
 export type DemoConnectionStatus =
     | 'disconnected'
     | 'dependencies'
@@ -8,13 +10,13 @@ export type DemoConnectionStatus =
     | 'evaluated'
     | 'error';
 
-const statusColor = (theme: Theme, status: DemoConnectionStatus) => {
-    switch (status) {
-        case 'evaluated':
+const toneColor = (theme: Theme, tone: StatusTone) => {
+    switch (tone) {
+        case 'success':
             return theme.palette.success.main;
         case 'error':
             return theme.palette.error.main;
-        case 'disconnected':
+        case 'neutral':
             return theme.palette.text.secondary;
         default:
             return theme.palette.warning.main;
@@ -35,25 +37,59 @@ const pulse = keyframes`
 `;
 
 const StyledDot = styled('span', {
-    shouldForwardProp: (prop) => prop !== 'status',
-})<{ status: DemoConnectionStatus }>(({ theme, status }) => ({
+    shouldForwardProp: (prop) => prop !== 'tone' && prop !== 'pulsing',
+})<{ tone: StatusTone; pulsing?: boolean }>(({ theme, tone, pulsing }) => ({
     width: theme.spacing(1.5),
     height: theme.spacing(1.5),
     borderRadius: '50%',
-    backgroundColor: statusColor(theme, status),
-    ...(status === 'evaluated' && {
+    backgroundColor: toneColor(theme, tone),
+    ...(pulsing && {
         animation: `${pulse} 2s infinite`,
     }),
 }));
 
 const StyledStatusText = styled(Typography, {
-    shouldForwardProp: (prop) => prop !== 'status',
-})<{ status: DemoConnectionStatus }>(({ theme, status }) => ({
+    shouldForwardProp: (prop) => prop !== 'tone',
+})<{ tone: StatusTone }>(({ theme, tone }) => ({
     fontWeight: theme.typography.fontWeightBold,
-    color: statusColor(theme, status),
+    color: toneColor(theme, tone),
 }));
 
-const statusLabels: Record<DemoConnectionStatus, string> = {
+interface IStatusIndicatorProps {
+    tone: StatusTone;
+    label: string;
+    tooltip: string;
+    pulsing?: boolean;
+    testId?: string;
+}
+
+/** A colored dot + bold label with an explanatory tooltip. */
+export const StatusIndicator = ({
+    tone,
+    label,
+    tooltip,
+    pulsing,
+    testId,
+}: IStatusIndicatorProps) => (
+    <Tooltip title={tooltip} arrow>
+        <StyledIndicator data-testid={testId}>
+            <StyledDot tone={tone} pulsing={pulsing} />
+            <StyledStatusText variant='body2' tone={tone}>
+                {label}
+            </StyledStatusText>
+        </StyledIndicator>
+    </Tooltip>
+);
+
+const connectionTones: Record<DemoConnectionStatus, StatusTone> = {
+    disconnected: 'neutral',
+    dependencies: 'warning',
+    connected: 'warning',
+    evaluated: 'success',
+    error: 'error',
+};
+
+const connectionLabels: Record<DemoConnectionStatus, string> = {
     disconnected: 'NOT CONNECTED',
     dependencies: 'DEPENDENCIES INSTALLED',
     connected: 'CONNECTED: READY TO EVALUATE FLAGS',
@@ -61,7 +97,7 @@ const statusLabels: Record<DemoConnectionStatus, string> = {
     error: 'CONNECTION ERROR',
 };
 
-const statusTooltips: Record<DemoConnectionStatus, string> = {
+const connectionTooltips: Record<DemoConnectionStatus, string> = {
     disconnected: 'Install the demo app dependencies to get started.',
     dependencies:
         'Dependencies installed — connect the demo app with its API tokens.',
@@ -76,12 +112,11 @@ interface IDemoStatusIndicatorProps {
 }
 
 export const DemoStatusIndicator = ({ status }: IDemoStatusIndicatorProps) => (
-    <Tooltip title={statusTooltips[status]} arrow>
-        <StyledIndicator data-testid='demo-live-indicator'>
-            <StyledDot status={status} />
-            <StyledStatusText variant='body2' status={status}>
-                {statusLabels[status]}
-            </StyledStatusText>
-        </StyledIndicator>
-    </Tooltip>
+    <StatusIndicator
+        tone={connectionTones[status]}
+        label={connectionLabels[status]}
+        tooltip={connectionTooltips[status]}
+        pulsing={status === 'evaluated'}
+        testId='demo-live-indicator'
+    />
 );

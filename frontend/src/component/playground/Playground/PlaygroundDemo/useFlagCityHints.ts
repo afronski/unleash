@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import useSWR from 'swr';
 import { formatApiPath } from 'utils/formatPath';
 import handleErrorResponses from 'hooks/api/getters/httpErrorResponseHandler.js';
 import type { IFeatureToggle } from 'interfaces/featureToggle';
+import type { IFeatureStrategy } from 'interfaces/strategy';
 import {
     FLAG_CITY_ENVIRONMENTS,
     FLAG_CITY_PROJECT_ID,
@@ -117,14 +118,38 @@ const deriveHints = ([
         }),
     );
 
-export const useFlagCityHints = (
-    enabled: boolean,
-): FlagCityHintsByEnv | undefined => {
-    const { data } = useSWR(
+export const useFlagCityHints = (enabled: boolean) => {
+    const { data, mutate } = useSWR(
         enabled ? 'flagCityStrategyHints' : null,
         fetchAll,
         { refreshInterval: 3_000 },
     );
 
-    return useMemo(() => (data ? deriveHints(data) : undefined), [data]);
+    const hintsByEnv = useMemo(
+        () => (data ? deriveHints(data) : undefined),
+        [data],
+    );
+
+    const featureByName = useMemo(
+        () =>
+            Object.fromEntries(
+                (data ?? []).map((feature) => [feature.name, feature]),
+            ),
+        [data],
+    );
+
+    /** Active (non-disabled) strategies of one of the fetched flags. */
+    const strategiesFor = useCallback(
+        (flagName: string, environment: string): IFeatureStrategy[] =>
+            featureByName[flagName]?.environments
+                ?.find((env) => env.name === environment)
+                ?.strategies?.filter((strategy) => !strategy.disabled) ?? [],
+        [featureByName],
+    );
+
+    const refetch = useCallback(() => {
+        mutate().catch(console.warn);
+    }, [mutate]);
+
+    return { hintsByEnv, strategiesFor, refetch };
 };

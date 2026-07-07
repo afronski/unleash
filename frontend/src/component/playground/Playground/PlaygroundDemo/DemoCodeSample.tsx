@@ -1,4 +1,5 @@
 import { Button, styled, Tooltip, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import CheckIcon from '@mui/icons-material/Check';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -41,46 +42,152 @@ const StyledPanelHeader = styled('div')(({ theme }) => ({
     flexWrap: 'wrap',
 }));
 
-const installSnippet = `\`\`\`sh
+const installSnippet = `\`\`\`bash
 npm install unleash-proxy-client
 \`\`\``;
 
-const initSnippet = (tokenSecret: string) => `\`\`\`js
-import { UnleashClient } from 'unleash-proxy-client';
-
-// one client per city — development shown, production is identical
-const flags = new UnleashClient({
-    url: '${window.location.origin}/api/frontend',
-    clientKey: '${tokenSecret}',
-    appName: 'flagcity',
-    context: { userId: 'development' },
-    refreshInterval: 3,
-});
-
-flags.start();
-\`\`\``;
-
 const plainUsageSnippet = `\`\`\`js
-// sim.js — hardcoded behavior: every change is a redeploy
-const carsEnabled = true;
-const speedMultiplier = 1.0;
+// cars.js — show cars at all?
+spawnCars();
 
-if (carsEnabled) {
-    spawnCars({ speedMultiplier });
-}
+// speed.js — how fast do they drive?
+const speedMultiplier = 1.0;
 \`\`\``;
 
 const flaggedUsageSnippet = `\`\`\`js
-// sim.js — behavior behind flags: every change is a toggle
+// cars.js — a regular flag decides
 if (flags.isEnabled('cars')) {
-    const speed = flags.getVariant('car-features.speed');
-    const speedMultiplier = speed.enabled
-        ? Number(speed.payload.value)
-        : 1.0;
-
-    spawnCars({ speedMultiplier });
+  spawnCars();
 }
+
+// speed.js — a variant payload decides
+const speed = flags.getVariant('car-features.speed');
+const speedMultiplier = speed.enabled
+  ? Number(speed.payload.value)
+  : 1.0;
 \`\`\``;
+
+const StyledConnectBlock = styled('pre')(({ theme }) => ({
+    backgroundColor: theme.palette.background.elevation1,
+    padding: theme.spacing(2),
+    borderRadius: `${theme.shape.borderRadius}px`,
+    overflow: 'hidden',
+    fontSize: theme.typography.body2.fontSize,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all',
+    margin: 0,
+    color: theme.palette.codeHighlighting.variable,
+}));
+
+// hand-colored tokens matching CodeRenderer's hljs theme — the interleaved
+// tooltip chips rule out running highlight.js over the whole snippet
+const StyledKeyword = styled('span')(({ theme }) => ({
+    color: theme.palette.codeHighlighting.keyword,
+}));
+
+const StyledString = styled('span')(({ theme }) => ({
+    color: theme.palette.codeHighlighting.string,
+}));
+
+const StyledNumber = styled('span')(({ theme }) => ({
+    color: theme.palette.codeHighlighting.number,
+}));
+
+const StyledTitle = styled('span')(({ theme }) => ({
+    color: theme.palette.codeHighlighting.title,
+}));
+
+const StyledAttr = styled('span')(({ theme }) => ({
+    color: theme.palette.codeHighlighting.attr,
+}));
+
+const StyledInsertedValue = styled('span', {
+    shouldForwardProp: (prop) => prop !== 'placeholder',
+})<{ placeholder?: boolean }>(({ theme, placeholder }) => ({
+    borderRadius: `${theme.shape.borderRadius}px`,
+    padding: theme.spacing(0.25, 0.75),
+    cursor: 'help',
+    backgroundColor: placeholder
+        ? theme.palette.background.paper
+        : alpha(theme.palette.primary.main, 0.2),
+    border: `1px dashed ${
+        placeholder ? theme.palette.divider : theme.palette.primary.main
+    }`,
+    color: placeholder
+        ? theme.palette.text.secondary
+        : theme.palette.primary.main,
+}));
+
+interface IInsertedValueProps {
+    value?: string;
+    tooltip: string;
+}
+
+const InsertedValue = ({ value, tooltip }: IInsertedValueProps) => (
+    <Tooltip title={tooltip} arrow>
+        <StyledInsertedValue placeholder={!value}>
+            {value ?? 'TODO'}
+        </StyledInsertedValue>
+    </Tooltip>
+);
+
+interface IConnectCodeBlockProps {
+    tokenSecret?: string;
+    connected: boolean;
+}
+
+/**
+ * The client-init snippet with the two instance-specific values rendered as
+ * inserted chips: 'TODO' placeholders until Connect is clicked, then the
+ * real URL and token with tooltips explaining where they came from.
+ */
+const ConnectCodeBlock = ({
+    tokenSecret,
+    connected,
+}: IConnectCodeBlockProps) => (
+    <StyledConnectBlock data-testid='demo-connect-snippet'>
+        <code>
+            <StyledKeyword>import</StyledKeyword>
+            {' { UnleashClient } '}
+            <StyledKeyword>from</StyledKeyword>{' '}
+            <StyledString>'unleash-proxy-client'</StyledString>
+            {';\n\n'}
+            <StyledKeyword>const</StyledKeyword>
+            {' flags = '}
+            <StyledKeyword>new</StyledKeyword>{' '}
+            <StyledTitle>UnleashClient</StyledTitle>
+            {'({\n  '}
+            <StyledAttr>url</StyledAttr>
+            {': '}
+            <InsertedValue
+                value={
+                    connected
+                        ? `${window.location.origin}/api/frontend`
+                        : undefined
+                }
+                tooltip="The Frontend API of this Unleash instance — the address the SDK polls for evaluated flags (this page's origin + /api/frontend)."
+            />
+            {',\n  '}
+            <StyledAttr>clientKey</StyledAttr>
+            {': '}
+            <InsertedValue
+                value={connected ? tokenSecret : undefined}
+                tooltip='The "flagcity-development" frontend API token created in the Configure Unleash step — scoped to the Flag City project and the development environment.'
+            />
+            {',\n  '}
+            <StyledAttr>appName</StyledAttr>
+            {': '}
+            <StyledString>'flagcity'</StyledString>
+            {',\n  '}
+            <StyledAttr>refreshInterval</StyledAttr>
+            {': '}
+            <StyledNumber>3</StyledNumber>
+            {',\n});\n\nflags.'}
+            <StyledTitle>start</StyledTitle>
+            {'();'}
+        </code>
+    </StyledConnectBlock>
+);
 
 interface IDemoCodeSampleProps {
     tokenSecret?: string;
@@ -124,7 +231,7 @@ export const DemoCodeSample = ({
                 Flag City is a small traffic simulation whose whole behavior —
                 cars, pedestrians, traffic lights, day and night — is steered by
                 the feature flags from the table. Three steps connect it to this
-                Unleash instance.
+                Unleash instance:
             </Typography>
             <StyledStepRow>
                 <StyledStepHeader variant='body1'>
@@ -165,9 +272,7 @@ export const DemoCodeSample = ({
                     </span>
                 </Tooltip>
             </StyledStepRow>
-            <Markdown components={{ code: CodeRenderer }}>
-                {initSnippet(tokenSecret ?? '<YOUR_API_TOKEN>')}
-            </Markdown>
+            <ConnectCodeBlock tokenSecret={tokenSecret} connected={connected} />
             <StyledStepRow>
                 <StyledStepHeader variant='body1'>
                     3. Wrap the city in flags

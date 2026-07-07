@@ -2,25 +2,10 @@ import { styled, Typography } from '@mui/material';
 import { FlagCityCard } from './FlagCityCard.tsx';
 import type { FlagCityHintsByEnv } from './useFlagCityHints.ts';
 
-const StyledRow = styled('div')(({ theme }) => ({
-    display: 'grid',
-    gridAutoColumns: 'minmax(0, 1fr)',
-    gridAutoFlow: 'column',
-    gap: theme.spacing(3),
-    [theme.breakpoints.down('md')]: {
-        gridAutoFlow: 'row',
-    },
-}));
-
-const StyledEnvironmentBox = styled('section')(({ theme }) => ({
-    display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing(1.5),
-    padding: theme.spacing(2.5),
-    borderRadius: `${theme.shape.borderRadiusLarge}px`,
-    border: `1px solid ${theme.palette.divider}`,
-    backgroundColor: theme.palette.background.elevation1,
-}));
+const StyledViewport = styled('div')({
+    width: '100%',
+    minWidth: 0,
+});
 
 const StyledDemoCanvas = styled('div')(({ theme }) => ({
     display: 'flex',
@@ -34,30 +19,39 @@ const StyledDemoCanvas = styled('div')(({ theme }) => ({
 
 interface IDemoEnvironmentCanvasProps {
     environments: string[];
+    activeEnvironment: string;
     tokensByEnv: Record<string, string | undefined>;
     hintsByEnv?: FlagCityHintsByEnv;
 }
 
+/**
+ * One big city per environment tab. Every city stays mounted so its state
+ * survives tab switches — the hidden ones are display:none and their sim
+ * clocks are paused.
+ */
 export const DemoEnvironmentCanvas = ({
     environments,
+    activeEnvironment,
     tokensByEnv,
     hintsByEnv,
 }: IDemoEnvironmentCanvasProps) => (
-    <StyledRow>
+    <StyledViewport>
         {environments.map((environment) => {
             const tokenSecret = tokensByEnv[environment];
+            const active = environment === activeEnvironment;
 
             return (
-                <StyledEnvironmentBox
+                <div
                     key={environment}
+                    style={active ? undefined : { display: 'none' }}
                     data-testid={`demo-canvas-${environment}`}
                 >
-                    <Typography variant='h3'>{environment}</Typography>
                     {tokenSecret ? (
                         <FlagCityCard
                             environmentName={environment}
                             tokenSecret={tokenSecret}
                             hints={hintsByEnv?.[environment]}
+                            paused={!active}
                         />
                     ) : (
                         <StyledDemoCanvas>
@@ -66,8 +60,8 @@ export const DemoEnvironmentCanvas = ({
                             </Typography>
                         </StyledDemoCanvas>
                     )}
-                </StyledEnvironmentBox>
+                </div>
             );
         })}
-    </StyledRow>
+    </StyledViewport>
 );

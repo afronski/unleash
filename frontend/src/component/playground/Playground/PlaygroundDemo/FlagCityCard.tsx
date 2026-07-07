@@ -22,6 +22,8 @@ interface IFlagCityCardProps {
     environmentName: string;
     tokenSecret: string;
     hints?: IFlagCityCityHints;
+    /** Pauses the simulation clock (used while the card's tab is hidden). */
+    paused?: boolean;
 }
 
 /**
@@ -34,9 +36,12 @@ export const FlagCityCard = ({
     environmentName,
     tokenSecret,
     hints,
+    paused = false,
 }: IFlagCityCardProps) => {
     const rootRef = useRef<HTMLElement>(null);
     const hintsRef = useRef(hints);
+    const pausedRef = useRef(paused);
+    pausedRef.current = paused;
     const cityRef = useRef<{ flags: any; rebind: () => void } | undefined>(
         undefined,
     );
@@ -93,11 +98,18 @@ export const FlagCityCard = ({
         observer.observe(root);
 
         // fixed 60 Hz logic step with an accumulator, render once per frame
-        // (same loop as the sample's main.js, but per card and cancellable)
+        // (same loop as the sample's main.js, but per card and cancellable);
+        // while paused the clock keeps advancing without accruing sim time,
+        // so switching tabs freezes and resumes the city without a jump
         const STEP = 1 / 60;
         let acc = 0;
         let last = performance.now();
         let raf = requestAnimationFrame(function frame(now) {
+            if (pausedRef.current) {
+                last = now;
+                raf = requestAnimationFrame(frame);
+                return;
+            }
             acc += Math.min((now - last) / 1000, 0.25);
             last = now;
             while (acc >= STEP) {

@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
     keyframes,
     Step,
     StepButton,
     Stepper,
     styled,
+    Tab,
+    Tabs,
     Typography,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { alpha } from '@mui/material/styles';
 import { PageContent } from 'component/common/PageContent/PageContent';
 import { PageHeader } from 'component/common/PageHeader/PageHeader';
@@ -16,8 +22,10 @@ import { useFeatureSearch } from 'hooks/api/getters/useFeatureSearch/useFeatureS
 import { useFrontendApiToggles } from 'hooks/api/getters/useFrontendApiToggles/useFrontendApiToggles';
 import { DemoEnvironmentCanvas } from './DemoEnvironmentCanvas.tsx';
 import { DemoSetupPanel } from './DemoSetupPanel.tsx';
+import { DemoCreatedResources } from './DemoCreatedResources.tsx';
 import type { DemoConnectionStatus } from './DemoStatusIndicator.tsx';
 import { DemoFeatureFlagsTable } from './DemoFeatureFlagsTable.tsx';
+import { DemoFlagControls } from './DemoFlagControls.tsx';
 import { DemoCodeSample } from './DemoCodeSample.tsx';
 import { useFlagCitySetup } from './useFlagCitySetup.ts';
 import { useFlagCityHints } from './useFlagCityHints.ts';
@@ -32,11 +40,12 @@ const StyledStack = styled('div')(({ theme }) => ({
     gap: theme.spacing(3),
 }));
 
-const StyledStepperRow = styled('div')(({ theme }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(3),
-    width: '100%',
+const StyledWizardAccordion = styled(Accordion)(({ theme }) => ({
+    boxShadow: 'none',
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: `${theme.shape.borderRadiusLarge}px`,
+    '&:before': { display: 'none' },
+    '&.Mui-expanded': { margin: 0 },
 }));
 
 const StyledStepper = styled(Stepper)(({ theme }) => ({
@@ -44,16 +53,38 @@ const StyledStepper = styled(Stepper)(({ theme }) => ({
     flex: 1,
 }));
 
-const StyledPulsingStepButton = styled(StepButton, {
+const StyledStepButton = styled(StepButton, {
     shouldForwardProp: (prop) => prop !== 'pulsing',
 })<{ pulsing?: boolean }>(({ theme, pulsing }) => ({
     borderRadius: `${theme.shape.borderRadius}px`,
+    // the button stretches across the stepper; only the dot and the label
+    // of a READY step should invite a click
+    cursor: 'default',
+    '&:not(.Mui-disabled) .MuiStepLabel-label, &:not(.Mui-disabled) .MuiStepIcon-root':
+        {
+            cursor: 'pointer',
+        },
+    '&.Mui-disabled, &.Mui-disabled .MuiStepLabel-label, &.Mui-disabled .MuiStepIcon-root':
+        {
+            cursor: 'default',
+        },
     ...(pulsing && {
-        animation: `${keyframes`
-            0% { box-shadow: 0 0 0 0 ${alpha(theme.palette.primary.main, 0.5)}; }
-            70% { box-shadow: 0 0 0 10px ${alpha(theme.palette.primary.main, 0)}; }
-            100% { box-shadow: 0 0 0 0 ${alpha(theme.palette.primary.main, 0)}; }
-        `} 1.8s infinite`,
+        '& .MuiStepLabel-label': {
+            // emphasized against the muted default in BOTH themes — plain
+            // white is illegible on the light theme
+            color: theme.palette.text.primary,
+            cursor: 'pointer',
+        },
+        '& .MuiStepIcon-root': {
+            color: theme.palette.primary.main,
+            borderRadius: '50%',
+            cursor: 'pointer',
+            animation: `${keyframes`
+                0% { box-shadow: 0 0 0 0 ${alpha(theme.palette.primary.main, 0.6)}; }
+                70% { box-shadow: 0 0 0 8px ${alpha(theme.palette.primary.main, 0)}; }
+                100% { box-shadow: 0 0 0 0 ${alpha(theme.palette.primary.main, 0)}; }
+            `} 1.8s infinite`,
+        },
     }),
 }));
 
@@ -62,6 +93,26 @@ const StyledPanelArea = styled('div')(({ theme }) => ({
     maxWidth: theme.spacing(110),
     margin: '0 auto',
 }));
+
+const StyledEnvTabs = styled(Tabs)(({ theme }) => ({
+    minHeight: theme.spacing(5),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+}));
+
+const StyledLiveGrid = styled('div')(({ theme }) => ({
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(380px, 520px)',
+    gap: theme.spacing(3),
+    alignItems: 'start',
+    [theme.breakpoints.down('lg')]: {
+        gridTemplateColumns: '1fr',
+    },
+}));
+
+const StyledSideTable = styled('div')({
+    minWidth: 0,
+    overflowX: 'auto',
+});
 
 const StyledTableHint = styled('div')(({ theme }) => ({
     display: 'flex',
@@ -85,6 +136,17 @@ export const PlaygroundDemo = () => {
     const { projectId } = useParams();
     const [activeStep, setActiveStep] = useState(0);
     const [setupProgress, setSetupProgress] = useState<SetupProgress>(0);
+    const [wizardExpanded, setWizardExpanded] = useState(true);
+    const [activeEnvironment, setActiveEnvironment] = useState<string>(
+        FLAG_CITY_ENVIRONMENTS[0],
+    );
+
+    const goToStep = (step: number) => {
+        setActiveStep(step);
+        // going live collapses the wizard chrome, like the project view's
+        // onboarding accordion; re-opening a setup step expands it again
+        setWizardExpanded(step !== 2);
+    };
 
     const projectCreated = setupProgress >= 1;
     const flagsCreated = setupProgress >= 2;
@@ -124,7 +186,11 @@ export const PlaygroundDemo = () => {
     const { error: sdkError } = useFrontendApiToggles(
         connected ? devToken?.secret : undefined,
     );
-    const hintsByEnv = useFlagCityHints(flagsCreated);
+    const {
+        hintsByEnv,
+        strategiesFor,
+        refetch: refetchHints,
+    } = useFlagCityHints(flagsCreated);
     const connectionStatus: DemoConnectionStatus =
         connected && sdkError
             ? 'error'
@@ -176,92 +242,159 @@ export const PlaygroundDemo = () => {
             }
         >
             <StyledStack>
-                <StyledStepperRow>
-                    <StyledStepper nonLinear activeStep={activeStep}>
-                        <Step completed={tokensCreated}>
-                            <StepButton
-                                onClick={() => setActiveStep(0)}
-                                data-testid='demo-step-configure'
-                            >
-                                Configure Unleash
-                            </StepButton>
-                        </Step>
-                        <Step completed={flagWrapped}>
-                            <StyledPulsingStepButton
-                                onClick={() => setActiveStep(1)}
-                                disabled={!tokensCreated}
-                                pulsing={tokensCreated && activeStep === 0}
-                                data-testid='demo-step-setup'
-                            >
-                                Setup demo app
-                            </StyledPulsingStepButton>
-                        </Step>
-                        <Step>
-                            <StyledPulsingStepButton
-                                onClick={() => setActiveStep(2)}
-                                disabled={!flagWrapped}
-                                pulsing={flagWrapped && activeStep < 2}
-                                data-testid='demo-step-live'
-                            >
-                                See it live!
-                            </StyledPulsingStepButton>
-                        </Step>
-                    </StyledStepper>
-                </StyledStepperRow>
+                <StyledWizardAccordion
+                    disableGutters
+                    expanded={wizardExpanded}
+                    onChange={(_, expanded) => setWizardExpanded(expanded)}
+                >
+                    <AccordionSummary
+                        expandIcon={<ExpandMoreIcon />}
+                        data-testid='demo-wizard-summary'
+                    >
+                        {/* step clicks must not toggle the accordion */}
+                        <div
+                            style={{ display: 'flex', flex: 1 }}
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <StyledStepper nonLinear activeStep={activeStep}>
+                                <Step completed={tokensCreated}>
+                                    <StyledStepButton
+                                        onClick={() => goToStep(0)}
+                                        data-testid='demo-step-configure'
+                                    >
+                                        Configure Unleash
+                                    </StyledStepButton>
+                                </Step>
+                                <Step completed={flagWrapped}>
+                                    <StyledStepButton
+                                        onClick={() => goToStep(1)}
+                                        disabled={!tokensCreated}
+                                        pulsing={
+                                            tokensCreated && activeStep === 0
+                                        }
+                                        data-testid='demo-step-setup'
+                                    >
+                                        Setup demo app
+                                    </StyledStepButton>
+                                </Step>
+                                <Step>
+                                    <StyledStepButton
+                                        onClick={() => goToStep(2)}
+                                        disabled={!flagWrapped}
+                                        pulsing={flagWrapped && activeStep < 2}
+                                        data-testid='demo-step-live'
+                                    >
+                                        See it live!
+                                    </StyledStepButton>
+                                </Step>
+                            </StyledStepper>
+                        </div>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                        {activeStep === 0 ? (
+                            <StyledPanelArea>
+                                <DemoSetupPanel
+                                    projectCreated={projectCreated}
+                                    flagsCreated={flagsCreated}
+                                    tokensCreated={tokensCreated}
+                                    busyStep={busyStep}
+                                    onCreateProject={onCreateProject}
+                                    onCreateFlags={onCreateFlags}
+                                    onCreateTokens={onCreateTokens}
+                                />
+                            </StyledPanelArea>
+                        ) : null}
+                        {activeStep === 1 ? (
+                            <StyledPanelArea>
+                                <DemoCodeSample
+                                    tokenSecret={devToken?.secret}
+                                    status={connectionStatus}
+                                    installed={installed}
+                                    connected={connected}
+                                    canConnect={tokensCreated}
+                                    flagWrapped={flagWrapped}
+                                    onInstall={() => advanceTo(4)}
+                                    onConnect={() => advanceTo(5)}
+                                    onWrapChange={(wrapped) =>
+                                        setSetupProgress(wrapped ? 6 : 5)
+                                    }
+                                />
+                            </StyledPanelArea>
+                        ) : null}
+                        {activeStep === 2 ? (
+                            <Typography variant='body2' color='text.secondary'>
+                                The demo app is live below — switch environments
+                                with the tabs and steer the cities from the flag
+                                list.
+                            </Typography>
+                        ) : null}
+                    </AccordionDetails>
+                </StyledWizardAccordion>
                 {activeStep === 0 ? (
-                    <StyledPanelArea>
-                        <DemoSetupPanel
-                            projectCreated={projectCreated}
-                            flagsCreated={flagsCreated}
-                            tokensCreated={tokensCreated}
-                            busyStep={busyStep}
-                            onCreateProject={onCreateProject}
-                            onCreateFlags={onCreateFlags}
-                            onCreateTokens={onCreateTokens}
-                        />
-                    </StyledPanelArea>
-                ) : null}
-                {activeStep === 1 ? (
-                    <StyledPanelArea>
-                        <DemoCodeSample
-                            tokenSecret={devToken?.secret}
-                            status={connectionStatus}
-                            installed={installed}
-                            connected={connected}
-                            canConnect={tokensCreated}
-                            flagWrapped={flagWrapped}
-                            onInstall={() => advanceTo(4)}
-                            onConnect={() => advanceTo(5)}
-                            onWrapChange={(wrapped) =>
-                                setSetupProgress(wrapped ? 6 : 5)
-                            }
-                        />
-                    </StyledPanelArea>
+                    <DemoCreatedResources
+                        projectCreated={projectCreated}
+                        flagsCreated={flagsCreated}
+                        tokensCreated={tokensCreated}
+                    />
                 ) : null}
                 {activeStep === 2 ? (
-                    <DemoEnvironmentCanvas
-                        environments={environments}
-                        tokensByEnv={{
-                            development: devToken?.secret,
-                            production: prodToken?.secret,
-                        }}
-                        hintsByEnv={hintsByEnv}
-                    />
+                    <>
+                        <StyledEnvTabs
+                            value={activeEnvironment}
+                            onChange={(_, value) => setActiveEnvironment(value)}
+                            indicatorColor='primary'
+                            textColor='primary'
+                        >
+                            {environments.map((environment) => (
+                                <Tab
+                                    key={environment}
+                                    value={environment}
+                                    label={environment}
+                                    data-testid={`demo-env-tab-${environment}`}
+                                />
+                            ))}
+                        </StyledEnvTabs>
+                        <StyledLiveGrid>
+                            <DemoEnvironmentCanvas
+                                environments={environments}
+                                activeEnvironment={activeEnvironment}
+                                tokensByEnv={{
+                                    development: devToken?.secret,
+                                    production: prodToken?.secret,
+                                }}
+                                hintsByEnv={hintsByEnv}
+                            />
+                            <StyledSideTable>
+                                {projectId && flagsCreated ? (
+                                    <DemoFeatureFlagsTable
+                                        projectId={projectId}
+                                        features={features}
+                                        environments={[activeEnvironment]}
+                                        refetch={refetchFlags}
+                                        renderControls={(featureName) => (
+                                            <DemoFlagControls
+                                                flagName={featureName}
+                                                environment={activeEnvironment}
+                                                strategies={strategiesFor(
+                                                    featureName,
+                                                    activeEnvironment,
+                                                )}
+                                                onUpdated={refetchHints}
+                                            />
+                                        )}
+                                    />
+                                ) : (
+                                    <StyledTableHint>
+                                        <Typography variant='body2'>
+                                            Create the demo project to load its
+                                            feature flags.
+                                        </Typography>
+                                    </StyledTableHint>
+                                )}
+                            </StyledSideTable>
+                        </StyledLiveGrid>
+                    </>
                 ) : null}
-                {projectId && flagsCreated ? (
-                    <DemoFeatureFlagsTable
-                        projectId={projectId}
-                        features={features}
-                        environments={environments}
-                        refetch={refetchFlags}
-                    />
-                ) : (
-                    <StyledTableHint>
-                        <Typography variant='body2'>
-                            Create the demo project to load its feature flags.
-                        </Typography>
-                    </StyledTableHint>
-                )}
             </StyledStack>
         </PageContent>
     );
