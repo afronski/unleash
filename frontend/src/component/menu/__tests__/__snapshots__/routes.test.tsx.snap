@@ -91,7 +91,7 @@ exports[`returns all baseRoutes 1`] = `
     "menu": {
       "primary": true,
     },
-    "path": "/playground",
+    "path": "/playground/*",
     "title": "Playground",
     "type": "protected",
   },

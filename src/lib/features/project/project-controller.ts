@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import Controller from '../../routes/controller.js';
 import {
+    CREATE_PROJECT,
     type IArchivedQuery,
     type IFlagResolver,
     type IProjectParam,
@@ -8,6 +9,7 @@ import {
     NONE,
     serializeDates,
 } from '../../types/index.js';
+import type { CreateProject } from '../../types/model.js';
 import ProjectFeaturesController from '../feature-toggle/feature-toggle-controller.js';
 import ProjectEnvironmentsController from '../project-environments/project-environments-controller.js';
 import ProjectHealthReport from '../../routes/admin-api/project/health-report.js';
@@ -93,6 +95,14 @@ export default class ProjectController extends Controller {
                     },
                 }),
             ],
+        });
+
+        this.route({
+            method: 'post',
+            path: '',
+            handler: this.createProject,
+            permission: CREATE_PROJECT,
+            middleware: [],
         });
 
         this.route({
@@ -228,11 +238,14 @@ export default class ProjectController extends Controller {
         res: Response<ProjectsSchema>,
     ): Promise<void> {
         const { user } = req;
-        const projects = await this.projectService.getProjects(
-            {
-                id: 'default',
-            },
+        // demo fork: OSS upstream lists only the default project; the
+        // Playground demo's 'flag-city' project is shown alongside it
+        const allProjects = await this.projectService.getProjects(
+            undefined,
             user.id,
+        );
+        const projects = allProjects.filter((project) =>
+            ['default', 'flag-city'].includes(project.id),
         );
 
         const projectsWithOwners =
@@ -244,6 +257,18 @@ export default class ProjectController extends Controller {
             projectsSchema.$id,
             { version: 1, projects: serializeDates(projectsWithOwners) },
         );
+    }
+
+    async createProject(
+        req: IAuthRequest<unknown, unknown, CreateProject>,
+        res: Response,
+    ): Promise<void> {
+        const created = await this.projectService.createProject(
+            req.body,
+            req.user,
+            req.audit,
+        );
+        res.status(201).json(serializeDates(created));
     }
 
     async getProjectOverview(

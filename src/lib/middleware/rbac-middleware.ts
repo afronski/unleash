@@ -100,7 +100,13 @@ const rbacMiddleware = (
                 projectId = 'default';
             }
             if (config.isOss) {
-                if (projectId !== undefined && projectId !== 'default') {
+                // demo fork: the Playground demo provisions a 'flag-city'
+                // project, which needs the same access as 'default'
+                const ossProjects = ['default', 'flag-city'];
+                if (
+                    projectId !== undefined &&
+                    !ossProjects.includes(projectId)
+                ) {
                     logger.error(
                         'OSS is only allowed to work with default project.',
                     );

@@ -169,7 +169,7 @@ export const routes: IRoute[] = [
 
     // Playground
     {
-        path: '/playground',
+        path: '/playground/*',
         title: 'Playground',
         component: LazyPlayground,
         hidden: false,

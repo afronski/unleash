@@ -300,7 +300,8 @@
       "!package.json",
       "!frontend/package.json",
       "!src/migrations/package.json",
-      "!**/.vite"
+      "!**/.vite",
+      "!frontend/src/component/playground/Playground/PlaygroundDemo/flagcity"
     ]
   }
 }

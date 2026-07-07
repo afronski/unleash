@@ -8,6 +8,7 @@ import {
     StyledSubtitle,
 } from './ProjectCard.styles';
 import { NewProjectCardFooter } from './NewProjectCardFooter.tsx';
+import { DemoProjectBadge } from './DemoProjectBadge.tsx';
 import { ProjectModeBadge } from './ProjectModeBadge/ProjectModeBadge.tsx';
 import { FavoriteAction } from './FavoriteAction/FavoriteAction.tsx';
 import { styled } from '@mui/material';
@@ -64,6 +65,7 @@ export const NewProjectCard = ({
                             )}
                         </StyledSubtitle>
                     </StyledProjectCardTitleContainer>
+                    <DemoProjectBadge id={id} />
                     <ProjectModeBadge mode={mode} />
                     <FavoriteAction id={id} isFavorite={favorite} />
                 </StyledProjectCardHeader>

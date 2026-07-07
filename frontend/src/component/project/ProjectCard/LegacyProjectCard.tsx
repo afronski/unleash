@@ -7,6 +7,7 @@ import {
     StyledProjectCardTitleContainer,
 } from './ProjectCard.styles';
 import { ProjectCardFooter } from './ProjectCardFooter/ProjectCardFooter.tsx';
+import { DemoProjectBadge } from './DemoProjectBadge.tsx';
 import { ProjectModeBadge } from './ProjectModeBadge/ProjectModeBadge.tsx';
 import { FavoriteAction } from './FavoriteAction/FavoriteAction.tsx';
 import { styled } from '@mui/material';
@@ -60,6 +61,7 @@ export const LegacyProjectCard = ({
                             <TimeAgo date={lastUpdatedAt || createdAt} />
                         </StyledSubtitle>
                     </StyledProjectCardTitleContainer>
+                    <DemoProjectBadge id={id} />
                     <ProjectModeBadge mode={mode} />
                     <FavoriteAction id={id} isFavorite={favorite} />
                 </StyledProjectCardHeader>

@@ -1,0 +1,91 @@
+.city-card {
+  background: #1d1f2b;
+  border: 1px solid #31344a;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.city-card header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #31344a;
+}
+
+.city-card h1 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.city-card .context {
+  font-size: 11px;
+  color: #8a8fa8;
+  white-space: nowrap;
+}
+
+.city-card .variant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid #31344a;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.city-card .variant-chip .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.city-card .spacer { flex: 1; }
+
+.city-card .variant-chip.off {
+  opacity: 0.45;
+}
+
+.city-card .hl-chip .val {
+  font-variant-numeric: tabular-nums;
+  color: #ddd;
+}
+
+.city-card .speed-chip .val {
+  font-variant-numeric: tabular-nums;
+  color: #ddd;
+}
+
+/* Flag state strip: one badge per flag, dimmed when the flag is off. */
+.city-card .badges {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #31344a;
+  font-size: 14px;
+}
+
+.city-card .badges span {
+  opacity: 1;
+  transition: opacity 0.25s;
+  cursor: default;
+}
+
+.city-card .badges span.off {
+  opacity: 0.22;
+  filter: grayscale(0.8);
+}
+
+.city-card canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+}
+
+.city-card {
+  font: 13px/1.5 system-ui, -apple-system, sans-serif;
+  color: #ddd;
+}
