@@ -11,12 +11,18 @@ import { bindFlagsToSim } from './flagcity/bindings.js';
 import screamUrl from './flagcity/assets/wilhelm.mp3';
 import './flagcity/flagcity.css';
 
-const StyledCityCardRoot = styled('section')({
+const StyledCityCardRoot = styled('section')(({ theme }) => ({
     width: '100%',
     // the sample's .city-card sets flex: 1 1 0 for its horizontal layout;
     // inside our column flexbox a zero basis collapses the card
     flex: 'none',
-});
+    // the vendored flagcity.css consumes these — the card chrome follows the
+    // admin theme (the canvas scene itself is day/night flag-driven)
+    '--fc-bg': theme.palette.background.paper,
+    '--fc-border': theme.palette.divider,
+    '--fc-text': theme.palette.text.primary,
+    '--fc-muted': theme.palette.text.secondary,
+}));
 
 interface IFlagCityCardProps {
     environmentName: string;
